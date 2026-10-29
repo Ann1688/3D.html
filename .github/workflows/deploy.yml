@@ -3,11 +3,17 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
+  workflow_dispatch: # 允許在 GitHub 網頁版 Actions 頁面手動點擊「Run workflow」
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+# 避免多個 push 同時觸發造成衝突
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -20,9 +26,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "npm"
 
       - name: Install dependencies
-        run: npm install
+        # ★ 關鍵修正：加上 --legacy-peer-deps 徹底解決 edgesOut 報錯
+        run: npm install --legacy-peer-deps
 
       - name: Build project
         run: npm run build
@@ -37,6 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
